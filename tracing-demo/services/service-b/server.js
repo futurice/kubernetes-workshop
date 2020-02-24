@@ -1,5 +1,4 @@
 const XRay = require("aws-xray-sdk");
-const http = XRay.captureHTTPs(require("http"));
 
 // Configure XRay
 XRay.config([XRay.plugins.EC2Plugin, XRay.plugins.ECSPlugin]);
@@ -23,14 +22,16 @@ app.get("/health", (_, res) => {
 app.get("/", (req, res) => {
   XRay.getSegment().addAnnotation("action", "handle root call");
 
-  // Generate some random variables to similate real behavior
+  // Generate some random variables to simulate real behavior
   const timeout = Math.random() * 5000;
   const success = Math.random();
 
   setTimeout(() => {
     if (success > 0.8) {
+      console.log("GET / Successful");
       res.json({ success, timeout });
     } else {
+      console.log("GET / Failed");
       res.status(500).send();
     }
   }, timeout);
@@ -39,5 +40,5 @@ app.get("/", (req, res) => {
 // End trace on every finished request
 app.use(XRay.express.closeSegment());
 
-app.listen(PORT);
+app.listen(port);
 console.log(`Service ${service} started on http://0.0.0.0:${port}`);

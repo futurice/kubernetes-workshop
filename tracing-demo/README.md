@@ -40,7 +40,9 @@ kubectl apply -f deployment.yaml
 
 ## Check the public address for service-1
 
-kubectl get services
+```
+kubectl get services -o json | jq -r '.items[] | select(.metadata.name=="service-1") | .status.loadBalancer.ingress[0].hostname'
+```
 
 ## Make a couple of call to the root endpoint and check the X-Ray console
 

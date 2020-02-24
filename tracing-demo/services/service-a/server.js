@@ -24,14 +24,15 @@ app.get("/health", (_, res) => {
 app.get("/", (req, res) => {
   XRay.getSegment().addAnnotation("action", "handle root call");
 
+  if (Math.random() > 0.9) {
+    XRay.getSegment().addAnnotation("error", "something went wrong");
+    console.log("Simulated error");
+    res.status(500).send(`Error in ${service}`);
+    return;
+  }
+
   // Make call to upstream server and simply pass the result on
   http.get(server, resp => {
-    if (Math.random() > 0.9) {
-      XRay.getSegment().addAnnotation("error", "something went wrong");
-      res.status(500).send();
-      return;
-    }
-
     let data = "";
 
     resp.on("data", chunk => {
@@ -39,17 +40,22 @@ app.get("/", (req, res) => {
     });
 
     resp.on("end", () => {
-      res.status(200).send(data);
+      if (res.statusCode === 200) {
+        console.log(`Successfully fetched data from ${server}`);
+        res.json(data);
+      } else {
+        console.log(`Failed to fetch data from ${server}`);
+        res.status(500).send(`Error retrieving data from ${server}`);
+      }
     });
-
   }).on("error", err => {
     console.log(`Request failed: ${err}`);
-    res.status(500).send();
+    res.status(500).send(`Error requesting data from ${server}`);
   });
 });
 
 // End trace on every finished request
 app.use(XRay.express.closeSegment());
 
-app.listen(PORT);
+app.listen(port);
 console.log(`Service ${service} started on http://0.0.0.0:${port}`);
