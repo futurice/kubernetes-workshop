@@ -1,0 +1,264 @@
+#############
+# Service 1 #
+#############
+
+# Description of pods to run
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: service-1
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: service-1
+    spec:
+      containers:
+        - name: service-1
+          image: <account-id>.dkr.ecr.eu-west-1.amazonaws.com/xray-demo/service-a:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: SERVICE
+              value: service-1
+            - name: SERVER_URL
+              value: service-2.default
+            - name: AWS_XRAY_DAEMON_ADDRESS # picked up by the XRAY SDK
+              value: xray.default
+
+# Logical name for those pods
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-1
+spec:
+  selector:
+    app: service-1
+  type: LoadBalancer # gives us a public IP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+#############
+# Service 2 #
+#############
+
+# Description of pods to run
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: service-2
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: service-2
+    spec:
+      containers:
+        - name: service-2
+          image: <account-id>.dkr.ecr.eu-west-1.amazonaws.com/xray-demo/service-a:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: SERVICE
+              value: service-2
+            - name: SERVER_URL
+              value: service-3.default
+            - name: AWS_XRAY_DAEMON_ADDRESS # picked up by the XRAY SDK
+              value: xray.default
+
+# Logical name for those pods
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-2
+spec:
+  selector:
+    app: service-2
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+#############
+# Service 3 #
+#############
+
+# Description of pods to run
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: service-3
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: service-3
+    spec:
+      containers:
+        - name: service-3
+          image: <account-id>.dkr.ecr.eu-west-1.amazonaws.com/xray-demo/service-b:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: SERVICE
+              value: service-3
+            - name: AWS_XRAY_DAEMON_ADDRESS # picked up by the XRAY SDK
+              value: xray.default
+
+# Logical name for those pods
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-3
+spec:
+  selector:
+    app: service-3
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+#############
+#   X-Ray   #
+#############
+
+# Account to get access to the cluster APIs
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: xray
+  name: xray
+
+# Give the service account cluster admin access
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: xray
+  labels:
+    app: xray
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: xray
+
+# Description of pods to run
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: xray
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: xray
+    spec:
+      volumes:
+        # Kubernetes way to inject config into the container (see below)
+        - name: config-volume
+          configMap:
+            name: "xray-config"
+      hostNetwork: true
+      containers:
+        - name: xray
+          image: <account-id>.dkr.ecr.eu-north-1.amazonaws.com/xray-demo/xray:v1
+          imagePullPolicy: Always
+          command: ["/usr/bin/xray", "-c", "/aws/xray/config.yaml"]
+          resources:
+            limits:
+              memory: 24Mi
+          ports:
+            - name: xray-ingest
+              containerPort: 2000
+              hostPort: 2000
+              protocol: UDP
+          volumeMounts:
+            - name: config-volume
+              mountPath: /aws/xray
+              readOnly: true
+
+# Configuration that will be injected in the containers
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-config
+data:
+  config.yaml: |-
+    # Maximum buffer size in MB (minimum 3). Choose 0 to use 1% of host memory.
+    TotalBufferSizeMB: 0
+    # Maximum number of concurrent calls to AWS X-Ray to upload segment documents.
+    Concurrency: 8
+    # Send segments to AWS X-Ray service in a specific region
+    Region: ""
+    # Change the X-Ray service endpoint to which the daemon sends segment documents.
+    Endpoint: ""
+    Socket:
+      # Change the address and port on which the daemon listens for UDP packets containing segment documents.
+      # Make sure we listen on all IP's by default for the k8s setup
+      UDPAddress: "0.0.0.0:2000"
+    Logging:
+      LogRotation: true
+      # Change the log level, from most verbose to least: dev, debug, info, warn, error, prod (default).
+      LogLevel: "prod"
+      # Output logs to the specified file path.
+      LogPath: ""
+    # Turn on local mode to skip EC2 instance metadata check.
+    LocalMode: false
+    # Amazon Resource Name (ARN) of the AWS resource running the daemon.
+    ResourceARN: ""
+    # Assume an IAM role to upload segments to a different account.
+    RoleARN: ""
+    # Disable TLS certificate verification.
+    NoVerifySSL: false
+    # Upload segments to AWS X-Ray through a proxy.
+    ProxyAddress: ""
+    # Daemon configuration file format version.
+    Version: 1
+
+
+# Logical name for the xray service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xray-service
+spec:
+  selector:
+    app: xray
+  clusterIP: None
+  ports:
+    - name: incoming
+      port: 2000
+      protocol: UDP

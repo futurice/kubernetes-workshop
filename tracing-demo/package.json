@@ -1,0 +1,14 @@
+{
+  "name": "services",
+  "version": "1.0.0",
+  "scripts": {
+    "create-registry": "aws ecr create-repository --repository-name xray-demo/$SERVICE",
+    "create-registry-a": "export SERVICE=service-a && npm run create-registry",
+    "create-registry-b": "export SERVICE=service-a && npm run create-registry",
+    "create-registry-xray": "export SERVICE=xray && npm run create-registry",
+    "build-and-push-service": "docker build -t $SERVICE -f ./services/Dockerfile ./services/$SERVICE && docker tag $SERVICE xray-demo/$SERVICE && docker push xray-demo/$SERVICE",
+    "build-and-push-service-a": "export SERVICE=service-a && npm run build-and-push-service",
+    "build-and-push-service-b": "export SERVICE=service-b && npm run build-and-push-service",
+    "build-and-push-xray": "docker build -t xray -f ./xray/Dockerfile ./xray && docker tag xray xray-demo/xray && docker push xray-demo/xray"
+  }
+}
