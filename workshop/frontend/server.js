@@ -12,7 +12,7 @@ app.get("/", (req, res) => {
     return;
   }
 
-  res.sendFile("index.html");
+  res.sendFile("index.html", { root: __dirname });
 });
 
 app.get("/api/books", (req, res) => {
