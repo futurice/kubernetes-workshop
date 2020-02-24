@@ -7,7 +7,7 @@ XRay.middleware.enableDynamicNaming();
 
 const port = process.env.PORT || 8080;
 const service = process.env.SERVICE || "service-unknown";
-const server = process.env.SERVER || "server-unknown";
+const server = process.env.SERVER_URL || "server-unknown";
 
 // Create express app
 const app = require("express")();
@@ -32,7 +32,7 @@ app.get("/", (req, res) => {
   }
 
   // Make call to upstream server and simply pass the result on
-  http.get(server, resp => {
+  http.get(`http://${server}/`, resp => {
     let data = "";
 
     resp.on("data", chunk => {
@@ -42,10 +42,10 @@ app.get("/", (req, res) => {
     resp.on("end", () => {
       if (res.statusCode === 200) {
         console.log(`Successfully fetched data from ${server}`);
-        res.json(data);
+        res.json(JSON.parse(data));
       } else {
         console.log(`Failed to fetch data from ${server}`);
-        res.status(500).send(`Error retrieving data from ${server}`);
+        res.status(500).send(data);
       }
     });
   }).on("error", err => {

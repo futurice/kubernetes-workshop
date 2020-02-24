@@ -32,7 +32,7 @@ app.get("/", (req, res) => {
       res.json({ success, timeout });
     } else {
       console.log("GET / Failed");
-      res.status(500).send();
+      res.status(500).send(`Failure in ${service}`);
     }
   }, timeout);
 });
