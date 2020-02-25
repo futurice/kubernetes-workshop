@@ -21,10 +21,60 @@ git clone https://github.com/futurice/kubernetes-workshop
 6. Create a Kubernetes cluster using eksctl:
 ```
 export KUBECONFIG=~/environment/$NAME/.kube/config
-eksctl create cluster --name=kubernetes-workshop-$NAME --nodes=3 --managed --alb-ingress-access --region=eu-west-1
+eksctl create cluster --name=$NAME --nodes=3 --managed --alb-ingress-access --region=eu-west-1
 ```
 
 ## Section 1: get familiar with the tools
+
+Goal: try to get the frontend service running and check that the root path (`/`) returns "Hello world!".
+
+### Commands you might need
+
+#### Docker
+
+- Create a docker registry
+```
+aws ecr create-repository --repository-name $NAME/frontend
+```
+- Build a docker container
+```
+docker build -t $NAME/frontend .
+```
+- Tag an image
+```
+docker tag futuk8s.dkr.ecr.eu-west-1.amazonaws.com/$NAME/frontend
+```
+- Push an image
+```
+docker push futuk8s.dkr.ecr.eu-west-1.amazonaws.com/$NAME/frontend
+```
+
+#### Kubernetes
+
+- Apply the kubernetes manifest
+```
+kubectl apply -f manifest.yaml
+```
+- Get all services in the cluster
+```
+kubectl get services
+```
+- Get all pods in the cluster
+```
+kubectl get pods
+```
+- See details of a certain pod
+```
+kubectl describe pod <ID>
+```
+- See logs of a certain pod
+```
+kubectl logs <ID>
+```
+- Delete a pod
+```
+kubectl delete pod <ID>
+```
 
 ## Section 2: secret management
 
