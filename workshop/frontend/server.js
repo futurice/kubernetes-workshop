@@ -15,11 +15,11 @@ app.get("/", (req, res) => {
   res.sendFile("index.html", { root: __dirname });
 });
 
-app.get("/api/books", (req, res) => {
-  const query = req.query.author ? `author=${req.query.author}` : "";
+app.get("/api/film-titles", (req, res) => {
+  const query = req.query.year ? `year=${req.query.year}` : "";
 
   const options = {
-    url: `http://${backend}/api/data${query}`,
+    url: `${backend}/${query}`,
     headers: {
       "X-Api-Key": apiKey,
     },
