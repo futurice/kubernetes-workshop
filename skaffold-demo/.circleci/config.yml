@@ -1,0 +1,19 @@
+version: 2.1
+
+orbs:
+  aws-eks: circleci/aws-eks@0.2.3
+  aws-ecr: circleci/aws-ecr@6.7.0
+
+jobs:
+  build:
+    executor: aws-eks/python3
+    steps:
+      - setup_remote_docker
+      - checkout
+      - aws-eks/update-kubeconfig-with-authenticator:
+          cluster-name: kube-demo
+          install-kubectl: true
+      - aws-ecr/ecr-login
+      - run: curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/v1.4.0/skaffold-linux-amd64 && chmod +x skaffold && sudo mv skaffold /usr/local/bin
+      - run: kubectl create namespace $CIRCLE_BRANCH || true
+      - run: skaffold run --namespace $CIRCLE_BRANCH --status-check --default-repo <AWS ACCOUNT ID>.dkr.ecr.eu-west-1.amazonaws.com
